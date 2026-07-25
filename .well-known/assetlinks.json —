@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "io.github.payrun_africa.twa",
+        "sha256_cert_fingerprints": ["8B:31:FC:29:EB:DD:BB:78:11:28:81:30:AA:0B:F0:76:03:29:A8:BB:1C:BD:78:0E:46:96:08:64:98:7D:71:28"]
+      }
+    }]
