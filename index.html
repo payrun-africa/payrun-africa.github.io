@@ -332,6 +332,15 @@ main{flex:1;padding:0 1.1rem}
         <div class="ec-row"><span>Ticket médio (mês)</span><span id="rel-ticket-medio">MT 0,00</span></div>
         <div class="ec-row"><span>Mais vendido (mês)</span><span id="rel-top-item">—</span></div>
       </div>
+      <div class="extra-card">
+        <div id="gerente-linha" class="cat-editavel" onclick="editarGerenteWa()" style="font-size:.75rem;color:var(--ink3);margin-bottom:.7rem">📞 Toca aqui para definir o número do dono/gerente</div>
+        <div class="ts" style="font-size:.68rem;color:var(--ink3);margin-bottom:.4rem">Enviar relatório por WhatsApp:</div>
+        <div class="tc-actions" style="gap:.5rem">
+          <button class="tc-btn add" style="flex:1" onclick="enviarRelatorio('dia')">Hoje</button>
+          <button class="tc-btn add" style="flex:1" onclick="enviarRelatorio('semana')">Semana</button>
+          <button class="tc-btn add" style="flex:1" onclick="enviarRelatorio('mes')">Mês</button>
+        </div>
+      </div>
       <div class="section-label">Pagamentos registados</div>
       <div id="hist-list" class="tab-list"></div>
       <div class="empty" id="hist-empty">Ainda não há pagamentos registados.</div>
@@ -739,6 +748,16 @@ function inicioSemana(ts){ const d=new Date(ts); const diaSemana=(d.getDay()+6)%
   d.setDate(d.getDate()-diaSemana); d.setHours(0,0,0,0); return d.getTime(); }
 function inicioMes(ts){ const d=new Date(ts); d.setDate(1); d.setHours(0,0,0,0); return d.getTime(); }
 
+function estatisticasPeriodo(vendas){
+  const total = vendas.reduce((s,h)=>s+h.total,0);
+  const qtd = vendas.length;
+  const ticketMedio = qtd ? total/qtd : 0;
+  const contagemItens = {};
+  vendas.forEach(h=>agruparLancamentos(h.lancamentos).forEach(i=>{ contagemItens[i.nome] = (contagemItens[i.nome]||0) + i.qtd; }));
+  const topItem = Object.entries(contagemItens).sort((a,b)=>b[1]-a[1])[0];
+  return { total, qtd, ticketMedio, topItem: topItem ? {nome:topItem[0], qtd:topItem[1]} : null };
+}
+
 function renderHistorico(){
   const lista = document.getElementById('hist-list');
   const vazio = document.getElementById('hist-empty');
@@ -750,26 +769,26 @@ function renderHistorico(){
   const vHoje = HIST.filter(h=>h.pagoEm>=iDia);
   const vSemana = HIST.filter(h=>h.pagoEm>=iSemana);
   const vMes = HIST.filter(h=>h.pagoEm>=iMes);
-  const somaTotal = arr=>arr.reduce((s,h)=>s+h.total,0);
 
-  document.getElementById('rel-hoje-total').textContent = fmt(somaTotal(vHoje));
-  document.getElementById('rel-hoje-qtd').textContent = vHoje.length+' venda'+(vHoje.length===1?'':'s');
-  document.getElementById('rel-semana-total').textContent = fmt(somaTotal(vSemana));
-  document.getElementById('rel-semana-qtd').textContent = vSemana.length+' venda'+(vSemana.length===1?'':'s');
-  document.getElementById('rel-mes-total').textContent = fmt(somaTotal(vMes));
-  document.getElementById('rel-mes-qtd').textContent = vMes.length+' venda'+(vMes.length===1?'':'s');
+  const eHoje = estatisticasPeriodo(vHoje);
+  const eSemana = estatisticasPeriodo(vSemana);
+  const eMes = estatisticasPeriodo(vMes);
+
+  document.getElementById('rel-hoje-total').textContent = fmt(eHoje.total);
+  document.getElementById('rel-hoje-qtd').textContent = eHoje.qtd+' venda'+(eHoje.qtd===1?'':'s');
+  document.getElementById('rel-semana-total').textContent = fmt(eSemana.total);
+  document.getElementById('rel-semana-qtd').textContent = eSemana.qtd+' venda'+(eSemana.qtd===1?'':'s');
+  document.getElementById('rel-mes-total').textContent = fmt(eMes.total);
+  document.getElementById('rel-mes-qtd').textContent = eMes.qtd+' venda'+(eMes.qtd===1?'':'s');
 
   const totalDivida = ABERTAS.reduce((s,c)=>s+totalLancamentos(c.lancamentos),0);
   document.getElementById('rel-divida-total').textContent = fmt(totalDivida);
   document.getElementById('rel-divida-qtd').textContent = ABERTAS.length+' conta'+(ABERTAS.length===1?'':'s')+' aberta'+(ABERTAS.length===1?'':'s');
 
-  const ticketMedio = vMes.length ? somaTotal(vMes)/vMes.length : 0;
-  document.getElementById('rel-ticket-medio').textContent = fmt(ticketMedio);
+  document.getElementById('rel-ticket-medio').textContent = fmt(eMes.ticketMedio);
+  document.getElementById('rel-top-item').textContent = eMes.topItem ? `${eMes.topItem.nome} (${eMes.topItem.qtd}×)` : '—';
 
-  const contagemItens = {};
-  vMes.forEach(h=>agruparLancamentos(h.lancamentos).forEach(i=>{ contagemItens[i.nome] = (contagemItens[i.nome]||0) + i.qtd; }));
-  const topItem = Object.entries(contagemItens).sort((a,b)=>b[1]-a[1])[0];
-  document.getElementById('rel-top-item').textContent = topItem ? `${topItem[0]} (${topItem[1]}×)` : '—';
+  atualizarLinhaGerente();
 
   HIST.slice().sort((a,b)=>b.pagoEm-a.pagoEm).forEach(h=>{
     const linhaTempo = h.lancamentos.slice().sort((a,b)=>a.ts-b.ts)
@@ -788,6 +807,46 @@ function renderHistorico(){
     `;
     lista.appendChild(div);
   });
+}
+
+// =====================================================================
+// RELATÓRIO PARA O DONO/GERENTE (envio directo por WhatsApp)
+// =====================================================================
+const LS_GERENTE_WA = 'fiado_gerente_whatsapp';
+
+function atualizarLinhaGerente(){
+  const tel = load(LS_GERENTE_WA, '');
+  const el = document.getElementById('gerente-linha');
+  el.textContent = tel ? '📞 Relatórios vão para: '+tel+'  (toca para mudar)' : '📞 Toca aqui para definir o número do dono/gerente';
+}
+function editarGerenteWa(){
+  const actual = load(LS_GERENTE_WA, '');
+  const novo = prompt('Número de WhatsApp do dono/gerente (com código do país, ex: 258841234567):', actual);
+  if(novo===null) return;
+  save(LS_GERENTE_WA, novo.trim());
+  atualizarLinhaGerente();
+}
+function enviarRelatorio(periodo){
+  const gerenteWa = load(LS_GERENTE_WA, '');
+  if(!gerenteWa){ toast('Define primeiro o número do dono/gerente'); editarGerenteWa(); return; }
+
+  const agora = Date.now();
+  let vendas, tituloPeriodo;
+  if(periodo==='dia'){ vendas = HIST.filter(h=>h.pagoEm>=inicioDia(agora)); tituloPeriodo='Hoje'; }
+  else if(periodo==='semana'){ vendas = HIST.filter(h=>h.pagoEm>=inicioSemana(agora)); tituloPeriodo='Esta semana'; }
+  else { vendas = HIST.filter(h=>h.pagoEm>=inicioMes(agora)); tituloPeriodo='Este mês'; }
+
+  const e = estatisticasPeriodo(vendas);
+  const totalDivida = ABERTAS.reduce((s,c)=>s+totalLancamentos(c.lancamentos),0);
+
+  const texto = `📊 Relatório — ${tituloPeriodo}\n${nomeNegocioAtual()}\n\n`+
+    `Vendas: ${fmt(e.total)} (${e.qtd} venda${e.qtd===1?'':'s'})\n`+
+    `Ticket médio: ${fmt(e.ticketMedio)}\n`+
+    `Mais vendido: ${e.topItem?e.topItem.nome+' ('+e.topItem.qtd+'×)':'—'}\n\n`+
+    `Em dívida agora: ${fmt(totalDivida)} (${ABERTAS.length} conta${ABERTAS.length===1?'':'s'} aberta${ABERTAS.length===1?'':'s'})\n\n`+
+    `_Enviado com Payrun Africa_`;
+
+  window.open('https://wa.me/'+limparTelefoneParaWa(gerenteWa)+'?text='+encodeURIComponent(texto), '_blank');
 }
 
 // =====================================================================
