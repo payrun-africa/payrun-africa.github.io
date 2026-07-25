@@ -115,6 +115,10 @@ main{flex:1;padding:0 1.1rem}
 .mm-nome{font-size:.82rem;font-weight:600}
 .mm-preco{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:.72rem;color:var(--ink3);margin-top:.1rem}
 .mm-del{background:none;border:none;color:var(--rust);font-size:1.05rem;cursor:pointer;padding:.2rem .4rem}
+.mm-edit{background:none;border:none;color:var(--ink3);font-size:1.05rem;cursor:pointer;padding:.2rem .4rem}
+.mm-actions{display:flex;align-items:center;gap:.1rem}
+.cat-hd-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem}
+.cat-del-btn{background:none;border:none;color:var(--ink3);font-size:.85rem;cursor:pointer;padding:.2rem .4rem}
 .btn-add-item{
   width:100%;background:transparent;border:1.5px dashed var(--amberd);color:var(--amberd);
   border-radius:9px;padding:.75rem;font-size:.8rem;font-weight:600;cursor:pointer;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
@@ -166,11 +170,11 @@ main{flex:1;padding:0 1.1rem}
 .modal-body{padding:1rem 1.1rem;overflow-y:auto;flex:1}
 .modal-body label{font-size:.68rem;font-weight:700;color:var(--ink2);text-transform:uppercase;letter-spacing:.03em;display:block;margin:.8rem 0 .3rem}
 .modal-body label:first-child{margin-top:0}
-.modal-body input[type=text],.modal-body input[type=number]{
+.modal-body input[type=text],.modal-body input[type=number],.modal-body select{
   width:100%;border:1.5px solid var(--line);border-radius:8px;padding:.55rem .7rem;font-size:.9rem;
   font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#fff;color:var(--ink);
 }
-.modal-body input:focus{outline:none;border-color:var(--amberd)}
+.modal-body input:focus,.modal-body select:focus{outline:none;border-color:var(--amberd)}
 .menu-pick-block h4{font-size:.78rem;font-weight:700;color:var(--ink2);margin-bottom:.5rem}
 .pick-grid{display:flex;flex-direction:column;gap:.4rem;margin-bottom:1rem}
 .pick-row{
@@ -334,15 +338,9 @@ main{flex:1;padding:0 1.1rem}
     </section>
 
     <section id="view-cardapio" class="view">
-      <div class="cat-block">
-        <h3 id="cat1-titulo-mgmt" class="cat-editavel" onclick="editarCategoria(1)">🍺 Bebidas</h3>
-        <div id="menu-bebidas" class="menu-manage-list"></div>
-      </div>
-      <div class="cat-block">
-        <h3 id="cat2-titulo-mgmt" class="cat-editavel" onclick="editarCategoria(2)">🍢 Comidas</h3>
-        <div id="menu-comidas" class="menu-manage-list"></div>
-      </div>
-      <button class="btn-add-item" onclick="abrirModalItem()">+ Novo item</button>
+      <div id="categorias-mgmt-container"></div>
+      <button class="btn-add-item" onclick="criarCategoria()">+ Nova categoria</button>
+      <button class="btn-add-item" style="margin-top:.5rem" onclick="abrirModalItem()">+ Novo item</button>
     </section>
   </main>
 
@@ -365,14 +363,7 @@ main{flex:1;padding:0 1.1rem}
     </div>
     <div class="modal-body">
       <div id="novo-pedido-hint" class="itens-resumo" style="display:none;margin-bottom:.7rem;font-style:italic">🕐 A registar um novo pedido, com a hora de agora — os pedidos anteriores desta conta continuam guardados.</div>
-      <div class="menu-pick-block">
-        <h4 id="cat1-titulo-pick">🍺 Bebidas</h4>
-        <div id="pick-bebidas" class="pick-grid"></div>
-      </div>
-      <div class="menu-pick-block">
-        <h4 id="cat2-titulo-pick">🍢 Comidas</h4>
-        <div id="pick-comidas" class="pick-grid"></div>
-      </div>
+      <div id="pickers-container"></div>
       <div id="conta-itens-vazio" class="itens-resumo">Toque nos itens acima para adicionar à conta.</div>
       <div class="cancel-link" id="cancelar-conta-link" onclick="cancelarConta()" style="display:none">Cancelar esta conta</div>
     </div>
@@ -421,20 +412,17 @@ main{flex:1;padding:0 1.1rem}
 <!-- Modal: novo item de menu -->
 <div class="modal-overlay" id="modal-item">
   <div class="modal-sheet small">
-    <div class="modal-hd"><span style="font-family:Georgia,'Noto Serif',serif;font-weight:700;font-size:1.15rem">Novo item</span><button onclick="fecharModalItem()">✕</button></div>
+    <div class="modal-hd"><span id="item-modal-titulo" style="font-family:Georgia,'Noto Serif',serif;font-weight:700;font-size:1.15rem">Novo item</span><button onclick="fecharModalItem()">✕</button></div>
     <div class="modal-body">
       <label>Nome</label>
       <input id="item-nome" type="text" placeholder="Ex: Cerveja 2M">
       <label>Preço (MT)</label>
       <input id="item-preco" type="number" inputmode="decimal" placeholder="0">
       <label>Categoria</label>
-      <div class="seg">
-        <button class="seg-btn active" id="seg-bebida" onclick="setCat('bebida')">🍺 Bebida</button>
-        <button class="seg-btn" id="seg-comida" onclick="setCat('comida')">🍢 Comida</button>
-      </div>
+      <select id="item-categoria"></select>
     </div>
     <div class="modal-ft" style="justify-content:flex-end">
-      <button class="btn-primary" onclick="guardarItemMenu()">Guardar item</button>
+      <button class="btn-primary" id="item-modal-btn" onclick="guardarItemMenu()">Guardar item</button>
     </div>
   </div>
 </div>
@@ -496,17 +484,28 @@ function save(key, val){ try{ localStorage.setItem(key, JSON.stringify(val)); }c
 let MENU = load(LS_MENU, null);
 if(!MENU){
   MENU = [
-    {id:'b1', nome:'Cerveja 2M', preco:90, cat:'bebida'},
-    {id:'b2', nome:'Cerveja Laurentina', preco:90, cat:'bebida'},
-    {id:'b3', nome:'Refrigerante', preco:60, cat:'bebida'},
-    {id:'b4', nome:'Água', preco:40, cat:'bebida'},
-    {id:'b5', nome:'R1 / Aguardente', preco:50, cat:'bebida'},
-    {id:'c1', nome:'Espetada', preco:100, cat:'comida'},
-    {id:'c2', nome:'Salgadinhos', preco:40, cat:'comida'},
-    {id:'c3', nome:'Sanduíche', preco:70, cat:'comida'},
+    {id:'b1', nome:'Cerveja 2M', preco:90, catId:'cat1'},
+    {id:'b2', nome:'Cerveja Laurentina', preco:90, catId:'cat1'},
+    {id:'b3', nome:'Refrigerante', preco:60, catId:'cat1'},
+    {id:'b4', nome:'Água', preco:40, catId:'cat1'},
+    {id:'b5', nome:'R1 / Aguardente', preco:50, catId:'cat1'},
+    {id:'c1', nome:'Espetada', preco:100, catId:'cat2'},
+    {id:'c2', nome:'Salgadinhos', preco:40, catId:'cat2'},
+    {id:'c3', nome:'Sanduíche', preco:70, catId:'cat2'},
   ];
   save(LS_MENU, MENU);
 }
+// Migração: itens guardados antes desta versão tinham "cat" (bebida/comida)
+// fixo, em vez de "catId" livre.
+let migrouMenu = false;
+MENU.forEach(item=>{
+  if(!item.catId){
+    item.catId = item.cat==='comida' ? 'cat2' : 'cat1';
+    delete item.cat;
+    migrouMenu = true;
+  }
+});
+if(migrouMenu) save(LS_MENU, MENU);
 const LS_CLIENTES = 'fiado_clientes';
 let CLIENTES = load(LS_CLIENTES, []);
 let clienteDetalheActualId = null;
@@ -535,7 +534,6 @@ if(migrou){ save(LS_ABERTAS, ABERTAS); save(LS_HIST, HIST); }
 
 // Conta em edição no modal (rascunho antes de "Guardar")
 let contaEditando = null; // { id (null se nova), cliente, itens:[{itemId,nome,preco,qtd}] }
-let catItemNovo = 'bebida';
 
 // =====================================================================
 // UTILITÁRIOS
@@ -595,29 +593,49 @@ function editarNome(){
 }
 
 // =====================================================================
-// NOMES DAS CATEGORIAS (Bebidas/Comidas por defeito, mas editáveis —
-// para lojas/outros estabelecimentos poderem usar os seus próprios nomes)
+// CATEGORIAS (qualquer número, criadas e nomeadas livremente — Bebidas/
+// Comidas vêm por defeito, mas uma loja pode apagar e criar as suas)
 // =====================================================================
-const LS_CAT1 = 'fiado_cat1_nome', LS_CAT2 = 'fiado_cat2_nome';
-let CAT1_NOME = load(LS_CAT1, 'Bebidas');
-let CAT2_NOME = load(LS_CAT2, 'Comidas');
-
-function aplicarNomesCategorias(){
-  document.getElementById('cat1-titulo-mgmt').textContent = '🍺 '+CAT1_NOME;
-  document.getElementById('cat2-titulo-mgmt').textContent = '🍢 '+CAT2_NOME;
-  document.getElementById('cat1-titulo-pick').textContent = '🍺 '+CAT1_NOME;
-  document.getElementById('cat2-titulo-pick').textContent = '🍢 '+CAT2_NOME;
-  document.getElementById('seg-bebida').textContent = '🍺 '+CAT1_NOME;
-  document.getElementById('seg-comida').textContent = '🍢 '+CAT2_NOME;
+const LS_CATEGORIAS = 'fiado_categorias';
+let CATEGORIAS = load(LS_CATEGORIAS, null);
+if(!CATEGORIAS){
+  // Migração: se existiam os 2 nomes antigos (versão anterior), aproveitá-los
+  const legado1 = load('fiado_cat1_nome', 'Bebidas');
+  const legado2 = load('fiado_cat2_nome', 'Comidas');
+  CATEGORIAS = [ {id:'cat1', nome:legado1}, {id:'cat2', nome:legado2} ];
+  save(LS_CATEGORIAS, CATEGORIAS);
 }
-function editarCategoria(n){
-  const actual = n===1 ? CAT1_NOME : CAT2_NOME;
-  const novo = prompt('Nome desta categoria (ex: Bebidas, Roupa, Ferramentas...):', actual);
+
+function nomeCategoria(catId){
+  const c = CATEGORIAS.find(x=>x.id===catId);
+  return c ? c.nome : '(sem categoria)';
+}
+function criarCategoria(){
+  const nome = prompt('Nome da nova categoria (ex: Sapatos, Casacos, Cintos...):','');
+  if(!nome || !nome.trim()) return;
+  CATEGORIAS.push({ id:uid(), nome:nome.trim() });
+  save(LS_CATEGORIAS, CATEGORIAS);
+  renderCategoriasMgmt();
+  toast('Categoria criada');
+}
+function editarCategoria(catId){
+  const c = CATEGORIAS.find(x=>x.id===catId);
+  if(!c) return;
+  const novo = prompt('Nome desta categoria:', c.nome);
   if(novo && novo.trim()){
-    if(n===1){ CAT1_NOME = novo.trim(); save(LS_CAT1, CAT1_NOME); }
-    else { CAT2_NOME = novo.trim(); save(LS_CAT2, CAT2_NOME); }
-    aplicarNomesCategorias();
+    c.nome = novo.trim();
+    save(LS_CATEGORIAS, CATEGORIAS);
+    renderCategoriasMgmt();
   }
+}
+function apagarCategoria(catId){
+  if(CATEGORIAS.length<=1){ toast('Tem de existir pelo menos uma categoria'); return; }
+  const temItens = MENU.some(m=>m.catId===catId);
+  if(temItens){ toast('Esta categoria tem produtos — apaga ou muda-os primeiro'); return; }
+  if(!confirm('Apagar esta categoria?')) return;
+  CATEGORIAS = CATEGORIAS.filter(c=>c.id!==catId);
+  save(LS_CATEGORIAS, CATEGORIAS);
+  renderCategoriasMgmt();
 }
 
 // =====================================================================
@@ -667,25 +685,38 @@ function montarTextoConta(cliente, lancamentos){
   const total = totalLancamentos(lancamentos);
   return `🧾 ${nomeNegocioAtual()}\nCliente: ${cliente}\n\n${linhas.join('\n')}\n\nTotal: ${fmt(total)}\n\n_Conta gerada com Payrun Africa_`;
 }
+function buscarTelefoneCliente(nomeCliente){
+  const nomeNorm = (nomeCliente||'').trim().toLowerCase();
+  const c = CLIENTES.find(x=>x.nome.trim().toLowerCase()===nomeNorm);
+  return (c && c.telefone && c.telefone.trim()) ? c.telefone.trim() : null;
+}
+function limparTelefoneParaWa(tel){
+  let digitos = tel.replace(/\D/g,'');
+  if(digitos.length===9 && /^8[2-7]/.test(digitos)) digitos = '258'+digitos;
+  return digitos;
+}
+function enviarTexto(texto, nomeCliente, tituloPartilha){
+  const telefone = buscarTelefoneCliente(nomeCliente);
+  if(telefone){
+    // Número já guardado — abre a conversa certa directamente, sem escolher contacto
+    window.open('https://wa.me/'+limparTelefoneParaWa(telefone)+'?text='+encodeURIComponent(texto), '_blank');
+  } else if(navigator.share){
+    navigator.share({ title: tituloPartilha, text: texto }).catch(()=>{});
+  } else {
+    window.open('https://wa.me/?text='+encodeURIComponent(texto), '_blank');
+  }
+}
 function enviarConta(id){
   const conta = ABERTAS.find(c=>c.id===id);
   if(!conta) return;
   const texto = montarTextoConta(conta.cliente, conta.lancamentos);
-  if(navigator.share){
-    navigator.share({ title: nomeNegocioAtual()+' — Conta', text: texto }).catch(()=>{});
-  } else {
-    window.open('https://wa.me/?text='+encodeURIComponent(texto), '_blank');
-  }
+  enviarTexto(texto, conta.cliente, nomeNegocioAtual()+' — Conta');
 }
 function enviarContaHistorico(id){
   const h = HIST.find(x=>x.id===id);
   if(!h) return;
   const texto = montarTextoConta(h.cliente, h.lancamentos) + '\n\n✅ Pago em '+formatarData(h.pagoEm);
-  if(navigator.share){
-    navigator.share({ title: nomeNegocioAtual()+' — Recibo', text: texto }).catch(()=>{});
-  } else {
-    window.open('https://wa.me/?text='+encodeURIComponent(texto), '_blank');
-  }
+  enviarTexto(texto, h.cliente, nomeNegocioAtual()+' — Recibo');
 }
 
 function formatarData(ts){
@@ -762,19 +793,34 @@ function renderHistorico(){
 // =====================================================================
 // RENDER: CARDÁPIO (gestão de itens/preços)
 // =====================================================================
-function renderCardapio(){
-  const beb = document.getElementById('menu-bebidas');
-  const com = document.getElementById('menu-comidas');
-  beb.innerHTML=''; com.innerHTML='';
-  MENU.forEach(item=>{
-    const row = document.createElement('div');
-    row.className='mm-row';
-    row.innerHTML = `
-      <div class="mm-info"><div class="mm-nome">${escapeHtml(item.nome)}</div><div class="mm-preco">${fmt(item.preco)}</div></div>
-      <button class="mm-del" onclick="apagarItemMenu('${item.id}')">🗑️</button>
+function renderCategoriasMgmt(){
+  const container = document.getElementById('categorias-mgmt-container');
+  container.innerHTML = '';
+  CATEGORIAS.forEach(cat=>{
+    const bloco = document.createElement('div');
+    bloco.className = 'cat-block';
+    const lista = MENU.filter(m=>m.catId===cat.id);
+    const linhasHtml = lista.map(item=>`
+      <div class="mm-row">
+        <div class="mm-info"><div class="mm-nome">${escapeHtml(item.nome)}</div><div class="mm-preco">${fmt(item.preco)}</div></div>
+        <div class="mm-actions">
+          <button class="mm-edit" onclick="editarItemMenu('${item.id}')" title="Editar">✏️</button>
+          <button class="mm-del" onclick="apagarItemMenu('${item.id}')" title="Apagar">🗑️</button>
+        </div>
+      </div>
+    `).join('') || '<div class="itens-resumo" style="text-align:left;padding:.3rem 0">Sem produtos nesta categoria ainda.</div>';
+    bloco.innerHTML = `
+      <div class="cat-hd-row">
+        <h3 class="cat-editavel" onclick="editarCategoria('${cat.id}')">${escapeHtml(cat.nome)}</h3>
+        <button class="cat-del-btn" onclick="apagarCategoria('${cat.id}')" title="Apagar categoria">🗑️ categoria</button>
+      </div>
+      <div class="menu-manage-list">${linhasHtml}</div>
     `;
-    (item.cat==='bebida'?beb:com).appendChild(row);
+    container.appendChild(bloco);
   });
+}
+function renderCardapio(){
+  renderCategoriasMgmt();
 }
 
 // =====================================================================
@@ -818,23 +864,29 @@ function cancelarConta(){
 }
 
 function renderPickers(){
-  const pb = document.getElementById('pick-bebidas');
-  const pc = document.getElementById('pick-comidas');
-  pb.innerHTML=''; pc.innerHTML='';
-  MENU.forEach(item=>{
-    const existente = contaEditando.itens.find(i=>i.itemId===item.id);
-    const qtd = existente?existente.qtd:0;
-    const row = document.createElement('div');
-    row.className='pick-row';
-    row.innerHTML = `
-      <div class="pr-info"><div class="pr-nome">${escapeHtml(item.nome)}</div><div class="pr-preco">${fmt(item.preco)}</div></div>
-      <div class="pr-qty">
-        <button class="pr-btn minus" style="visibility:${qtd>0?'visible':'hidden'}" onclick="alterarQtd('${item.id}',-1)">−</button>
-        <span class="pr-qtd-num">${qtd}</span>
-        <button class="pr-btn plus" onclick="alterarQtd('${item.id}',1)">+</button>
-      </div>
-    `;
-    (item.cat==='bebida'?pb:pc).appendChild(row);
+  const container = document.getElementById('pickers-container');
+  container.innerHTML = '';
+  CATEGORIAS.forEach(cat=>{
+    const itensCat = MENU.filter(m=>m.catId===cat.id);
+    if(itensCat.length===0) return;
+    const bloco = document.createElement('div');
+    bloco.className = 'menu-pick-block';
+    const linhasHtml = itensCat.map(item=>{
+      const existente = contaEditando.itens.find(i=>i.itemId===item.id);
+      const qtd = existente?existente.qtd:0;
+      return `
+        <div class="pick-row">
+          <div class="pr-info"><div class="pr-nome">${escapeHtml(item.nome)}</div><div class="pr-preco">${fmt(item.preco)}</div></div>
+          <div class="pr-qty">
+            <button class="pr-btn minus" style="visibility:${qtd>0?'visible':'hidden'}" onclick="alterarQtd('${item.id}',-1)">−</button>
+            <span class="pr-qtd-num">${qtd}</span>
+            <button class="pr-btn plus" onclick="alterarQtd('${item.id}',1)">+</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+    bloco.innerHTML = `<h4>${escapeHtml(cat.nome)}</h4><div class="pick-grid">${linhasHtml}</div>`;
+    container.appendChild(bloco);
   });
   atualizarTotalConta();
 }
@@ -994,28 +1046,52 @@ function apagarClienteActual(){
   voltarListaClientes();
 }
 
+let itemEditandoId = null;
+
+function popularSelectCategorias(catIdSeleccionada){
+  const sel = document.getElementById('item-categoria');
+  sel.innerHTML = CATEGORIAS.map(c=>`<option value="${c.id}">${escapeHtml(c.nome)}</option>`).join('');
+  sel.value = catIdSeleccionada || CATEGORIAS[0].id;
+}
 function abrirModalItem(){
+  itemEditandoId = null;
+  document.getElementById('item-modal-titulo').textContent = 'Novo item';
+  document.getElementById('item-modal-btn').textContent = 'Guardar item';
   document.getElementById('item-nome').value='';
   document.getElementById('item-preco').value='';
-  setCat('bebida');
+  popularSelectCategorias(null);
+  document.getElementById('modal-item').classList.add('open');
+}
+function editarItemMenu(id){
+  const item = MENU.find(m=>m.id===id);
+  if(!item) return;
+  itemEditandoId = id;
+  document.getElementById('item-modal-titulo').textContent = 'Editar item';
+  document.getElementById('item-modal-btn').textContent = 'Guardar alterações';
+  document.getElementById('item-nome').value = item.nome;
+  document.getElementById('item-preco').value = item.preco;
+  popularSelectCategorias(item.catId);
   document.getElementById('modal-item').classList.add('open');
 }
 function fecharModalItem(){ document.getElementById('modal-item').classList.remove('open'); }
-function setCat(cat){
-  catItemNovo = cat;
-  document.getElementById('seg-bebida').classList.toggle('active', cat==='bebida');
-  document.getElementById('seg-comida').classList.toggle('active', cat==='comida');
-}
 function guardarItemMenu(){
   const nome = document.getElementById('item-nome').value.trim();
   const preco = parseFloat(document.getElementById('item-preco').value);
+  const catId = document.getElementById('item-categoria').value;
   if(!nome){ toast('Escreva o nome do item'); return; }
   if(isNaN(preco) || preco<0){ toast('Escreva um preço válido'); return; }
-  MENU.push({ id:uid(), nome, preco, cat:catItemNovo });
+
+  if(itemEditandoId){
+    const item = MENU.find(m=>m.id===itemEditandoId);
+    item.nome = nome; item.preco = preco; item.catId = catId;
+    toast('Produto actualizado');
+  } else {
+    MENU.push({ id:uid(), nome, preco, catId });
+    toast('Item adicionado aos produtos');
+  }
   save(LS_MENU, MENU);
   fecharModalItem();
   renderCardapio();
-  toast('Item adicionado aos produtos');
 }
 function apagarItemMenu(id){
   if(!confirm('Remover este item dos produtos? Contas já abertas com este item não são alteradas.')) return;
@@ -1192,7 +1268,6 @@ if(ehIOS() && !emModoStandalone()){
 }
 
 carregarNome();
-aplicarNomesCategorias();
 verificarLicenca();
 renderFiado();
 renderHistorico();
