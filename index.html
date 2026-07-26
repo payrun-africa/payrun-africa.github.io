@@ -88,6 +88,11 @@ main{flex:1;padding:0 1.1rem}
 .tc-share{background:var(--paper2);border:1px solid var(--line);border-radius:6px;width:28px;height:28px;
   font-size:.85rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:0}
 .tc-share:active{background:var(--amberp)}
+.tc-obs-btn{
+  width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;
+  border-bottom:10px solid var(--line);background:none;cursor:pointer;padding:0;flex-shrink:0;
+}
+.tc-obs-btn.tem-obs{border-bottom-color:#E8A33D}
 .tc-itens{font-size:.72rem;color:var(--ink2);margin-top:.5rem;line-height:1.55}
 .tc-lanc{font-size:.72rem;color:var(--ink2);padding:.12rem 0}
 .tc-lanc span{font-family:'SF Mono',Menlo,Consolas,monospace;color:var(--ink3);font-weight:600}
@@ -287,7 +292,7 @@ main{flex:1;padding:0 1.1rem}
   <div class="topbar">
     <div class="app-brand">Payrun Africa</div>
     <div class="brand" onclick="editarNome()">
-      <div class="brand-name" id="brand-name">Clica aqui para colocar o nome da tua Barraca ou restaurante</div>
+      <div class="brand-name" id="brand-name">Clique aqui para adicionar o nome da sua Loja, restaurante ou Barraca</div>
       <div class="brand-tag">caderneta de fiado &amp; vendas</div>
     </div>
   </div>
@@ -329,7 +334,6 @@ main{flex:1;padding:0 1.1rem}
         </div>
       </div>
       <div class="extra-card">
-        <div class="ec-row"><span>Ticket médio (mês)</span><span id="rel-ticket-medio">MT 0,00</span></div>
         <div class="ec-row"><span>Mais vendido (mês)</span><span id="rel-top-item">—</span></div>
       </div>
       <div class="extra-card">
@@ -379,6 +383,48 @@ main{flex:1;padding:0 1.1rem}
     <div class="modal-ft">
       <span class="modal-total" id="conta-total">MT 0,00</span>
       <button class="btn-primary" onclick="guardarConta()">Guardar conta</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: prompt genérico (substitui o prompt() feio do browser) -->
+<div class="modal-overlay" id="modal-prompt-generico">
+  <div class="modal-sheet small">
+    <div class="modal-hd"><span id="prompt-titulo" style="font-family:Georgia,'Noto Serif',serif;font-weight:700;font-size:1.15rem">Título</span><button onclick="fecharPromptGenerico()">✕</button></div>
+    <div class="modal-body">
+      <label id="prompt-label">Texto</label>
+      <input id="prompt-input" type="text" onkeydown="if(event.key==='Enter')confirmarPromptGenerico()">
+    </div>
+    <div class="modal-ft" style="justify-content:flex-end">
+      <button class="btn-primary" onclick="confirmarPromptGenerico()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: confirmação genérica (substitui o confirm() feio do browser) -->
+<div class="modal-overlay" id="modal-confirm-generico">
+  <div class="modal-sheet small">
+    <div class="modal-hd"><span style="font-family:Georgia,'Noto Serif',serif;font-weight:700;font-size:1.15rem">Confirmar</span><button onclick="fecharConfirmGenerico()">✕</button></div>
+    <div class="modal-body">
+      <div id="confirm-mensagem" style="font-size:.88rem;color:var(--ink2);line-height:1.55"></div>
+    </div>
+    <div class="modal-ft">
+      <span class="cancel-link" style="margin:0;flex:1" onclick="fecharConfirmGenerico()">Cancelar</span>
+      <button class="btn-primary" id="confirm-btn-ok" onclick="confirmarConfirmGenerico()">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: observação da conta -->
+<div class="modal-overlay" id="modal-observacao">
+  <div class="modal-sheet small">
+    <div class="modal-hd"><span style="font-family:Georgia,'Noto Serif',serif;font-weight:700;font-size:1.15rem">📝 Observação</span><button onclick="fecharObservacao()">✕</button></div>
+    <div class="modal-body">
+      <label>Nota sobre esta conta (ex: "pediu para pagar só sexta", "desconfiar", etc.)</label>
+      <textarea id="observacao-texto" rows="5" style="width:100%;border:1.5px solid var(--line);border-radius:8px;padding:.6rem .7rem;font-size:.88rem;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:var(--ink);resize:vertical"></textarea>
+    </div>
+    <div class="modal-ft" style="justify-content:flex-end">
+      <button class="btn-primary" onclick="guardarObservacao()">Guardar</button>
     </div>
   </div>
 </div>
@@ -593,12 +639,11 @@ function carregarNome(){
 }
 function editarNome(){
   const actual = document.getElementById('brand-name').textContent;
-  const ehPlaceholder = actual === 'Clica aqui para colocar o nome da tua Barraca ou restaurante';
-  const novo = prompt('Nome da tua barraca/restaurante:', ehPlaceholder ? '' : actual);
-  if(novo && novo.trim()){
-    document.getElementById('brand-name').textContent = novo.trim();
-    save(LS_NOME, novo.trim());
-  }
+  const ehPlaceholder = actual === 'Clique aqui para adicionar o nome da sua Loja, restaurante ou Barraca';
+  abrirPromptGenerico('Nome do negócio', 'Nome da tua loja, restaurante ou barraca', ehPlaceholder ? '' : actual, (novo)=>{
+    document.getElementById('brand-name').textContent = novo;
+    save(LS_NOME, novo);
+  });
 }
 
 // =====================================================================
@@ -620,31 +665,31 @@ function nomeCategoria(catId){
   return c ? c.nome : '(sem categoria)';
 }
 function criarCategoria(){
-  const nome = prompt('Nome da nova categoria (ex: Sapatos, Casacos, Cintos...):','');
-  if(!nome || !nome.trim()) return;
-  CATEGORIAS.push({ id:uid(), nome:nome.trim() });
-  save(LS_CATEGORIAS, CATEGORIAS);
-  renderCategoriasMgmt();
-  toast('Categoria criada');
+  abrirPromptGenerico('Nova categoria', 'Nome da categoria (ex: Sapatos, Casacos, Cintos...)', '', (nome)=>{
+    CATEGORIAS.push({ id:uid(), nome });
+    save(LS_CATEGORIAS, CATEGORIAS);
+    renderCategoriasMgmt();
+    toast('Categoria criada');
+  });
 }
 function editarCategoria(catId){
   const c = CATEGORIAS.find(x=>x.id===catId);
   if(!c) return;
-  const novo = prompt('Nome desta categoria:', c.nome);
-  if(novo && novo.trim()){
-    c.nome = novo.trim();
+  abrirPromptGenerico('Editar categoria', 'Nome desta categoria', c.nome, (novo)=>{
+    c.nome = novo;
     save(LS_CATEGORIAS, CATEGORIAS);
     renderCategoriasMgmt();
-  }
+  });
 }
 function apagarCategoria(catId){
   if(CATEGORIAS.length<=1){ toast('Tem de existir pelo menos uma categoria'); return; }
   const temItens = MENU.some(m=>m.catId===catId);
   if(temItens){ toast('Esta categoria tem produtos — apaga ou muda-os primeiro'); return; }
-  if(!confirm('Apagar esta categoria?')) return;
-  CATEGORIAS = CATEGORIAS.filter(c=>c.id!==catId);
-  save(LS_CATEGORIAS, CATEGORIAS);
-  renderCategoriasMgmt();
+  abrirConfirmGenerico('Apagar esta categoria?', ()=>{
+    CATEGORIAS = CATEGORIAS.filter(c=>c.id!==catId);
+    save(LS_CATEGORIAS, CATEGORIAS);
+    renderCategoriasMgmt();
+  }, 'Apagar');
 }
 
 // =====================================================================
@@ -666,12 +711,14 @@ function renderFiado(){
     const resumoItens = agrupado.map(i=>`<b>${i.qtd}×</b> ${escapeHtml(i.nome)}`).join(' · ') || '<i>sem itens</i>';
     const div = document.createElement('div');
     div.className='tab-card';
+    const temObs = conta.observacao && conta.observacao.trim();
     div.innerHTML = `
       <div class="tab-card-hd">
         <div><div class="tc-nome">${escapeHtml(conta.cliente)}</div><div class="tc-quando">desde ${formatarData(conta.criadoEm)}</div></div>
         <div class="tc-hd-right">
           <div class="tc-total">${fmt(total)}</div>
           <button class="tc-share" onclick="enviarConta('${conta.id}')" title="Enviar conta ao cliente">📤</button>
+          <button class="tc-obs-btn ${temObs?'tem-obs':''}" onclick="abrirObservacao('${conta.id}')" title="${temObs?'Ver observação':'Adicionar observação'}"></button>
         </div>
       </div>
       <div class="tc-itens">${resumoItens}</div>
@@ -684,9 +731,73 @@ function renderFiado(){
   });
 }
 
+// =====================================================================
+// MODAIS GENÉRICOS (substituem prompt()/confirm() do browser pelo visual da app)
+// =====================================================================
+let promptCallback = null;
+function abrirPromptGenerico(titulo, label, valorActual, callback){
+  document.getElementById('prompt-titulo').textContent = titulo;
+  document.getElementById('prompt-label').textContent = label;
+  document.getElementById('prompt-input').value = valorActual || '';
+  promptCallback = callback;
+  document.getElementById('modal-prompt-generico').classList.add('open');
+  setTimeout(()=>document.getElementById('prompt-input').focus(),200);
+}
+function fecharPromptGenerico(){
+  document.getElementById('modal-prompt-generico').classList.remove('open');
+  promptCallback = null;
+}
+function confirmarPromptGenerico(){
+  const valor = document.getElementById('prompt-input').value.trim();
+  if(!valor) return;
+  const cb = promptCallback;
+  fecharPromptGenerico();
+  if(cb) cb(valor);
+}
+
+let confirmCallback = null;
+function abrirConfirmGenerico(mensagem, callback, textoBotao){
+  document.getElementById('confirm-mensagem').textContent = mensagem;
+  document.getElementById('confirm-btn-ok').textContent = textoBotao || 'Confirmar';
+  confirmCallback = callback;
+  document.getElementById('modal-confirm-generico').classList.add('open');
+}
+function fecharConfirmGenerico(){
+  document.getElementById('modal-confirm-generico').classList.remove('open');
+  confirmCallback = null;
+}
+function confirmarConfirmGenerico(){
+  const cb = confirmCallback;
+  fecharConfirmGenerico();
+  if(cb) cb();
+}
+
+let observacaoContaId = null;
+function abrirObservacao(contaId){
+  const conta = ABERTAS.find(c=>c.id===contaId);
+  if(!conta) return;
+  observacaoContaId = contaId;
+  document.getElementById('observacao-texto').value = conta.observacao || '';
+  document.getElementById('modal-observacao').classList.add('open');
+  setTimeout(()=>document.getElementById('observacao-texto').focus(),200);
+}
+function fecharObservacao(){
+  document.getElementById('modal-observacao').classList.remove('open');
+  observacaoContaId = null;
+}
+function guardarObservacao(){
+  const conta = ABERTAS.find(c=>c.id===observacaoContaId);
+  if(!conta) return;
+  conta.observacao = document.getElementById('observacao-texto').value.trim();
+  save(LS_ABERTAS, ABERTAS);
+  fecharObservacao();
+  renderFiado();
+  toast('Observação guardada');
+}
+
 function nomeNegocioAtual(){
   const t = document.getElementById('brand-name').textContent;
-  return t==='Clica aqui para colocar o nome da tua Barraca ou restaurante' ? 'Barraca' : t;
+  return t==='Clique aqui para adicionar o nome da sua Loja, restaurante ou Barraca' ? 'Barraca' : t;
 }
 function montarTextoConta(cliente, lancamentos){
   const linhas = lancamentos.slice().sort((a,b)=>a.ts-b.ts)
@@ -694,22 +805,13 @@ function montarTextoConta(cliente, lancamentos){
   const total = totalLancamentos(lancamentos);
   return `🧾 ${nomeNegocioAtual()}\nCliente: ${cliente}\n\n${linhas.join('\n')}\n\nTotal: ${fmt(total)}\n\n_Conta gerada com Payrun Africa_`;
 }
-function buscarTelefoneCliente(nomeCliente){
-  const nomeNorm = (nomeCliente||'').trim().toLowerCase();
-  const c = CLIENTES.find(x=>x.nome.trim().toLowerCase()===nomeNorm);
-  return (c && c.telefone && c.telefone.trim()) ? c.telefone.trim() : null;
-}
 function limparTelefoneParaWa(tel){
   let digitos = tel.replace(/\D/g,'');
   if(digitos.length===9 && /^8[2-7]/.test(digitos)) digitos = '258'+digitos;
   return digitos;
 }
-function enviarTexto(texto, nomeCliente, tituloPartilha){
-  const telefone = buscarTelefoneCliente(nomeCliente);
-  if(telefone){
-    // Número já guardado — abre a conversa certa directamente, sem escolher contacto
-    window.open('https://wa.me/'+limparTelefoneParaWa(telefone)+'?text='+encodeURIComponent(texto), '_blank');
-  } else if(navigator.share){
+function enviarTexto(texto, tituloPartilha){
+  if(navigator.share){
     navigator.share({ title: tituloPartilha, text: texto }).catch(()=>{});
   } else {
     window.open('https://wa.me/?text='+encodeURIComponent(texto), '_blank');
@@ -719,13 +821,13 @@ function enviarConta(id){
   const conta = ABERTAS.find(c=>c.id===id);
   if(!conta) return;
   const texto = montarTextoConta(conta.cliente, conta.lancamentos);
-  enviarTexto(texto, conta.cliente, nomeNegocioAtual()+' — Conta');
+  enviarTexto(texto, nomeNegocioAtual()+' — Conta');
 }
 function enviarContaHistorico(id){
   const h = HIST.find(x=>x.id===id);
   if(!h) return;
   const texto = montarTextoConta(h.cliente, h.lancamentos) + '\n\n✅ Pago em '+formatarData(h.pagoEm);
-  enviarTexto(texto, h.cliente, nomeNegocioAtual()+' — Recibo');
+  enviarTexto(texto, nomeNegocioAtual()+' — Recibo');
 }
 
 function formatarData(ts){
@@ -785,7 +887,6 @@ function renderHistorico(){
   document.getElementById('rel-divida-total').textContent = fmt(totalDivida);
   document.getElementById('rel-divida-qtd').textContent = ABERTAS.length+' conta'+(ABERTAS.length===1?'':'s')+' aberta'+(ABERTAS.length===1?'':'s');
 
-  document.getElementById('rel-ticket-medio').textContent = fmt(eMes.ticketMedio);
   document.getElementById('rel-top-item').textContent = eMes.topItem ? `${eMes.topItem.nome} (${eMes.topItem.qtd}×)` : '—';
 
   atualizarLinhaGerente();
@@ -821,29 +922,40 @@ function atualizarLinhaGerente(){
 }
 function editarGerenteWa(){
   const actual = load(LS_GERENTE_WA, '');
-  const novo = prompt('Número de WhatsApp do dono/gerente (com código do país, ex: 258841234567):', actual);
-  if(novo===null) return;
-  save(LS_GERENTE_WA, novo.trim());
-  atualizarLinhaGerente();
+  abrirPromptGenerico('Dono/gerente', 'Número de WhatsApp (com código do país, ex: 258841234567)', actual, (novo)=>{
+    save(LS_GERENTE_WA, novo);
+    atualizarLinhaGerente();
+  });
+}
+function itensConsumidosPeriodo(inicioTs){
+  const todosLancamentos = [];
+  ABERTAS.forEach(c=>c.lancamentos.forEach(l=>{ if(l.ts>=inicioTs) todosLancamentos.push(l); }));
+  HIST.forEach(h=>h.lancamentos.forEach(l=>{ if(l.ts>=inicioTs) todosLancamentos.push(l); }));
+  return agruparLancamentos(todosLancamentos).sort((a,b)=>b.qtd-a.qtd);
 }
 function enviarRelatorio(periodo){
   const gerenteWa = load(LS_GERENTE_WA, '');
   if(!gerenteWa){ toast('Define primeiro o número do dono/gerente'); editarGerenteWa(); return; }
 
   const agora = Date.now();
-  let vendas, tituloPeriodo;
-  if(periodo==='dia'){ vendas = HIST.filter(h=>h.pagoEm>=inicioDia(agora)); tituloPeriodo='Hoje'; }
-  else if(periodo==='semana'){ vendas = HIST.filter(h=>h.pagoEm>=inicioSemana(agora)); tituloPeriodo='Esta semana'; }
-  else { vendas = HIST.filter(h=>h.pagoEm>=inicioMes(agora)); tituloPeriodo='Este mês'; }
+  let vendas, inicioTs, tituloPeriodo;
+  if(periodo==='dia'){ inicioTs=inicioDia(agora); tituloPeriodo='Hoje'; }
+  else if(periodo==='semana'){ inicioTs=inicioSemana(agora); tituloPeriodo='Esta semana'; }
+  else { inicioTs=inicioMes(agora); tituloPeriodo='Este mês'; }
+  vendas = HIST.filter(h=>h.pagoEm>=inicioTs);
 
   const e = estatisticasPeriodo(vendas);
   const totalDivida = ABERTAS.reduce((s,c)=>s+totalLancamentos(c.lancamentos),0);
+  const itensConsumidos = itensConsumidosPeriodo(inicioTs);
+  const listaItens = itensConsumidos.length
+    ? itensConsumidos.map(i=>`${i.qtd}× ${i.nome}`).join('\n')
+    : 'Sem consumo registado.';
 
   const texto = `📊 Relatório — ${tituloPeriodo}\n${nomeNegocioAtual()}\n\n`+
-    `Vendas: ${fmt(e.total)} (${e.qtd} venda${e.qtd===1?'':'s'})\n`+
-    `Ticket médio: ${fmt(e.ticketMedio)}\n`+
+    `Vendas pagas: ${fmt(e.total)} (${e.qtd} venda${e.qtd===1?'':'s'})\n`+
     `Mais vendido: ${e.topItem?e.topItem.nome+' ('+e.topItem.qtd+'×)':'—'}\n\n`+
     `Em dívida agora: ${fmt(totalDivida)} (${ABERTAS.length} conta${ABERTAS.length===1?'':'s'} aberta${ABERTAS.length===1?'':'s'})\n\n`+
+    `📦 Produtos consumidos (pagos + por pagar):\n${listaItens}\n\n`+
     `_Enviado com Payrun Africa_`;
 
   window.open('https://wa.me/'+limparTelefoneParaWa(gerenteWa)+'?text='+encodeURIComponent(texto), '_blank');
@@ -914,12 +1026,14 @@ function fecharModalConta(){
 }
 function cancelarConta(){
   if(!contaEditando || !contaEditando.id) return;
-  if(!confirm('Cancelar esta conta em aberto? Não fica registada em nenhum histórico.')) return;
-  ABERTAS = ABERTAS.filter(c=>c.id!==contaEditando.id);
-  save(LS_ABERTAS, ABERTAS);
-  fecharModalConta();
-  renderFiado();
-  toast('Conta cancelada');
+  const idConta = contaEditando.id;
+  abrirConfirmGenerico('Cancelar esta conta em aberto? Não fica registada em nenhum histórico.', ()=>{
+    ABERTAS = ABERTAS.filter(c=>c.id!==idConta);
+    save(LS_ABERTAS, ABERTAS);
+    fecharModalConta();
+    renderFiado();
+    toast('Conta cancelada');
+  }, 'Cancelar conta');
 }
 
 function renderPickers(){
@@ -982,7 +1096,7 @@ function guardarConta(){
     const conta = ABERTAS.find(c=>c.id===contaEditando.id);
     conta.lancamentos.push(...novosLancamentos);
   } else {
-    ABERTAS.push({ id:uid(), cliente, lancamentos:novosLancamentos, criadoEm:agora });
+    ABERTAS.push({ id:uid(), cliente, lancamentos:novosLancamentos, criadoEm:agora, observacao:'' });
   }
   save(LS_ABERTAS, ABERTAS);
   fecharModalConta();
@@ -997,15 +1111,15 @@ function pagarConta(id){
   const conta = ABERTAS.find(c=>c.id===id);
   if(!conta) return;
   const total = totalLancamentos(conta.lancamentos);
-  if(!confirm(`Confirmar pagamento de ${fmt(total)} por ${conta.cliente}?`)) return;
-
-  HIST.push({ id:uid(), cliente:conta.cliente, lancamentos:conta.lancamentos, total, pagoEm:Date.now() });
-  ABERTAS = ABERTAS.filter(c=>c.id!==id);
-  save(LS_ABERTAS, ABERTAS);
-  save(LS_HIST, HIST);
-  renderFiado();
-  renderHistorico();
-  toast(`Pago: ${fmt(total)} — ${conta.cliente}`);
+  abrirConfirmGenerico(`Confirmar pagamento de ${fmt(total)} por ${conta.cliente}?`, ()=>{
+    HIST.push({ id:uid(), cliente:conta.cliente, lancamentos:conta.lancamentos, total, pagoEm:Date.now(), observacao:conta.observacao||'' });
+    ABERTAS = ABERTAS.filter(c=>c.id!==id);
+    save(LS_ABERTAS, ABERTAS);
+    save(LS_HIST, HIST);
+    renderFiado();
+    renderHistorico();
+    toast(`Pago: ${fmt(total)} — ${conta.cliente}`);
+  }, 'Confirmar pagamento');
 }
 
 // =====================================================================
@@ -1099,10 +1213,11 @@ function usarClienteNaConta(){
   fecharClientes();
 }
 function apagarClienteActual(){
-  if(!confirm('Remover este cliente da lista? O histórico de compras dele não é apagado.')) return;
-  CLIENTES = CLIENTES.filter(c=>c.id!==clienteDetalheActualId);
-  save(LS_CLIENTES, CLIENTES);
-  voltarListaClientes();
+  abrirConfirmGenerico('Remover este cliente da lista? O histórico de compras dele não é apagado.', ()=>{
+    CLIENTES = CLIENTES.filter(c=>c.id!==clienteDetalheActualId);
+    save(LS_CLIENTES, CLIENTES);
+    voltarListaClientes();
+  }, 'Remover');
 }
 
 let itemEditandoId = null;
@@ -1153,10 +1268,11 @@ function guardarItemMenu(){
   renderCardapio();
 }
 function apagarItemMenu(id){
-  if(!confirm('Remover este item dos produtos? Contas já abertas com este item não são alteradas.')) return;
-  MENU = MENU.filter(m=>m.id!==id);
-  save(LS_MENU, MENU);
-  renderCardapio();
+  abrirConfirmGenerico('Remover este item dos produtos? Contas já abertas com este item não são alteradas.', ()=>{
+    MENU = MENU.filter(m=>m.id!==id);
+    save(LS_MENU, MENU);
+    renderCardapio();
+  }, 'Remover');
 }
 
 // =====================================================================
