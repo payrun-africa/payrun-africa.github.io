@@ -179,6 +179,11 @@ main{flex:1;padding:0 1.1rem}
   width:100%;border:1.5px solid var(--line);border-radius:8px;padding:.55rem .7rem;font-size:.9rem;
   font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#fff;color:var(--ink);
 }
+.pagar-linha{display:flex;align-items:center;gap:.6rem}
+.pagar-linha span{flex:1;font-size:.88rem;color:var(--ink2);line-height:1.4}
+.pagar-linha input{width:96px;flex-shrink:0;border:1.5px solid var(--line);border-radius:8px;padding:.5rem .5rem;
+  font-size:.9rem;font-family:'SF Mono',Menlo,Consolas,monospace;background:#fff;color:var(--ink);text-align:right}
+.pagar-linha input:focus{outline:none;border-color:var(--amberd)}
 .modal-body input:focus,.modal-body select:focus{outline:none;border-color:var(--amberd)}
 .menu-pick-block h4{font-size:.78rem;font-weight:700;color:var(--ink2);margin-bottom:.5rem}
 .pick-grid{display:flex;flex-direction:column;gap:.4rem;margin-bottom:1rem}
@@ -353,7 +358,7 @@ main{flex:1;padding:0 1.1rem}
     <section id="view-cardapio" class="view">
       <div id="categorias-mgmt-container"></div>
       <button class="btn-add-item" onclick="criarCategoria()">+ Nova categoria</button>
-      <button class="btn-add-item" style="margin-top:.5rem" onclick="abrirModalItem()">+ Novo item</button>
+      <button class="btn-add-item" style="margin-top:.5rem" onclick="abrirModalItem()">+ Novo produto</button>
     </section>
   </main>
 
@@ -415,6 +420,24 @@ main{flex:1;padding:0 1.1rem}
   </div>
 </div>
 
+<!-- Modal: confirmar pagamento (com valor editável para pagamentos parciais) -->
+<div class="modal-overlay" id="modal-pagar">
+  <div class="modal-sheet small">
+    <div class="modal-hd"><span style="font-family:Georgia,'Noto Serif',serif;font-weight:700;font-size:1.15rem">Confirmar</span><button onclick="fecharPagar()">✕</button></div>
+    <div class="modal-body">
+      <div class="pagar-linha">
+        <span id="pagar-mensagem">Confirmar pagamento de MT 0,00 por cliente?</span>
+        <input id="pagar-valor" type="number" inputmode="decimal" onkeydown="if(event.key==='Enter')confirmarPagarModal()">
+      </div>
+      <div class="itens-resumo" style="text-align:left;padding-top:.5rem">Podes mudar o valor se o cliente só pagar parte da conta agora — o resto fica em dívida.</div>
+    </div>
+    <div class="modal-ft">
+      <span class="cancel-link" style="margin:0;flex:1" onclick="fecharPagar()">Cancelar</span>
+      <button class="btn-primary" onclick="confirmarPagarModal()">Confirmar pagamento</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal: observação da conta -->
 <div class="modal-overlay" id="modal-observacao">
   <div class="modal-sheet small">
@@ -467,7 +490,7 @@ main{flex:1;padding:0 1.1rem}
 <!-- Modal: novo item de menu -->
 <div class="modal-overlay" id="modal-item">
   <div class="modal-sheet small">
-    <div class="modal-hd"><span id="item-modal-titulo" style="font-family:Georgia,'Noto Serif',serif;font-weight:700;font-size:1.15rem">Novo item</span><button onclick="fecharModalItem()">✕</button></div>
+    <div class="modal-hd"><span id="item-modal-titulo" style="font-family:Georgia,'Noto Serif',serif;font-weight:700;font-size:1.15rem">Novo produto</span><button onclick="fecharModalItem()">✕</button></div>
     <div class="modal-body">
       <label>Nome</label>
       <input id="item-nome" type="text" placeholder="Ex: Cerveja 2M">
@@ -477,7 +500,7 @@ main{flex:1;padding:0 1.1rem}
       <select id="item-categoria"></select>
     </div>
     <div class="modal-ft" style="justify-content:flex-end">
-      <button class="btn-primary" id="item-modal-btn" onclick="guardarItemMenu()">Guardar item</button>
+      <button class="btn-primary" id="item-modal-btn" onclick="guardarItemMenu()">Guardar produto</button>
     </div>
   </div>
 </div>
@@ -585,6 +608,10 @@ HIST.forEach(h=>{
     migrou = true;
   }
 });
+ABERTAS.forEach(c=>{
+  if(!c.pagamentos){ c.pagamentos = []; migrou = true; }
+  if(c.observacao===undefined){ c.observacao = ''; migrou = true; }
+});
 if(migrou){ save(LS_ABERTAS, ABERTAS); save(LS_HIST, HIST); }
 
 // Conta em edição no modal (rascunho antes de "Guardar")
@@ -600,6 +627,8 @@ function fmt(n){
 function uid(){ return 'x'+Date.now()+Math.random().toString(36).slice(2,7); }
 function totalConta(itens){ return itens.reduce((s,i)=>s+i.preco*i.qtd,0); }
 function totalLancamentos(lancamentos){ return lancamentos.reduce((s,l)=>s+l.preco*l.qtd,0); }
+function totalPago(conta){ return (conta.pagamentos||[]).reduce((s,p)=>s+p.valor,0); }
+function saldoDevido(conta){ return Math.max(0, totalLancamentos(conta.lancamentos) - totalPago(conta)); }
 function agruparLancamentos(lancamentos){
   const mapa = {};
   lancamentos.forEach(l=>{
@@ -702,11 +731,12 @@ function renderFiado(){
   if(ABERTAS.length===0){ vazio.classList.remove('hide'); }
   else { vazio.classList.add('hide'); }
 
-  const totalGeral = ABERTAS.reduce((s,c)=>s+totalLancamentos(c.lancamentos),0);
+  const totalGeral = ABERTAS.reduce((s,c)=>s+saldoDevido(c),0);
   document.getElementById('fiado-total').textContent = fmt(totalGeral);
 
   ABERTAS.slice().sort((a,b)=>b.criadoEm-a.criadoEm).forEach(conta=>{
-    const total = totalLancamentos(conta.lancamentos);
+    const total = saldoDevido(conta);
+    const jaPago = totalPago(conta);
     const agrupado = agruparLancamentos(conta.lancamentos);
     const resumoItens = agrupado.map(i=>`<b>${i.qtd}×</b> ${escapeHtml(i.nome)}`).join(' · ') || '<i>sem itens</i>';
     const div = document.createElement('div');
@@ -722,6 +752,7 @@ function renderFiado(){
         </div>
       </div>
       <div class="tc-itens">${resumoItens}</div>
+      ${jaPago>0 ? `<div class="tc-itens" style="color:var(--green);font-style:italic">Já pago: ${fmt(jaPago)}</div>` : ''}
       <div class="tc-actions">
         <button class="tc-btn add" onclick="abrirContaExistente('${conta.id}')">+ Adicionar</button>
         <button class="tc-btn pay" onclick="pagarConta('${conta.id}')">Pagar ${fmt(total)}</button>
@@ -799,10 +830,10 @@ function nomeNegocioAtual(){
   const t = document.getElementById('brand-name').textContent;
   return t==='Clique aqui para adicionar o nome da sua Loja, restaurante ou Barraca' ? 'Barraca' : t;
 }
-function montarTextoConta(cliente, lancamentos){
+function montarTextoConta(cliente, lancamentos, totalOverride){
   const linhas = lancamentos.slice().sort((a,b)=>a.ts-b.ts)
     .map(l=>`${horaCurta(l.ts)} — ${l.qtd}× ${l.nome}`);
-  const total = totalLancamentos(lancamentos);
+  const total = totalOverride!==undefined ? totalOverride : totalLancamentos(lancamentos);
   return `🧾 ${nomeNegocioAtual()}\nCliente: ${cliente}\n\n${linhas.join('\n')}\n\nTotal: ${fmt(total)}\n\n_Conta gerada com Payrun Africa_`;
 }
 function limparTelefoneParaWa(tel){
@@ -820,7 +851,9 @@ function enviarTexto(texto, tituloPartilha){
 function enviarConta(id){
   const conta = ABERTAS.find(c=>c.id===id);
   if(!conta) return;
-  const texto = montarTextoConta(conta.cliente, conta.lancamentos);
+  let texto = montarTextoConta(conta.cliente, conta.lancamentos, saldoDevido(conta));
+  const pago = totalPago(conta);
+  if(pago>0) texto = texto.replace('\n\nTotal:', `\n\nJá pago: ${fmt(pago)}\nSaldo em falta:`);
   enviarTexto(texto, nomeNegocioAtual()+' — Conta');
 }
 function enviarContaHistorico(id){
@@ -883,7 +916,7 @@ function renderHistorico(){
   document.getElementById('rel-mes-total').textContent = fmt(eMes.total);
   document.getElementById('rel-mes-qtd').textContent = eMes.qtd+' venda'+(eMes.qtd===1?'':'s');
 
-  const totalDivida = ABERTAS.reduce((s,c)=>s+totalLancamentos(c.lancamentos),0);
+  const totalDivida = ABERTAS.reduce((s,c)=>s+saldoDevido(c),0);
   document.getElementById('rel-divida-total').textContent = fmt(totalDivida);
   document.getElementById('rel-divida-qtd').textContent = ABERTAS.length+' conta'+(ABERTAS.length===1?'':'s')+' aberta'+(ABERTAS.length===1?'':'s');
 
@@ -945,7 +978,7 @@ function enviarRelatorio(periodo){
   vendas = HIST.filter(h=>h.pagoEm>=inicioTs);
 
   const e = estatisticasPeriodo(vendas);
-  const totalDivida = ABERTAS.reduce((s,c)=>s+totalLancamentos(c.lancamentos),0);
+  const totalDivida = ABERTAS.reduce((s,c)=>s+saldoDevido(c),0);
   const itensConsumidos = itensConsumidosPeriodo(inicioTs);
   const listaItens = itensConsumidos.length
     ? itensConsumidos.map(i=>`${i.qtd}× ${i.nome}`).join('\n')
@@ -1096,7 +1129,7 @@ function guardarConta(){
     const conta = ABERTAS.find(c=>c.id===contaEditando.id);
     conta.lancamentos.push(...novosLancamentos);
   } else {
-    ABERTAS.push({ id:uid(), cliente, lancamentos:novosLancamentos, criadoEm:agora, observacao:'' });
+    ABERTAS.push({ id:uid(), cliente, lancamentos:novosLancamentos, criadoEm:agora, observacao:'', pagamentos:[] });
   }
   save(LS_ABERTAS, ABERTAS);
   fecharModalConta();
@@ -1107,19 +1140,48 @@ function guardarConta(){
 // =====================================================================
 // PAGAR CONTA → move para o histórico
 // =====================================================================
+let pagarContaId = null;
 function pagarConta(id){
   const conta = ABERTAS.find(c=>c.id===id);
   if(!conta) return;
-  const total = totalLancamentos(conta.lancamentos);
-  abrirConfirmGenerico(`Confirmar pagamento de ${fmt(total)} por ${conta.cliente}?`, ()=>{
-    HIST.push({ id:uid(), cliente:conta.cliente, lancamentos:conta.lancamentos, total, pagoEm:Date.now(), observacao:conta.observacao||'' });
-    ABERTAS = ABERTAS.filter(c=>c.id!==id);
+  const saldo = saldoDevido(conta);
+  pagarContaId = id;
+  document.getElementById('pagar-mensagem').textContent = `Confirmar pagamento de ${fmt(saldo)} por ${conta.cliente}?`;
+  document.getElementById('pagar-valor').value = saldo.toFixed(2);
+  document.getElementById('modal-pagar').classList.add('open');
+  setTimeout(()=>{ const inp=document.getElementById('pagar-valor'); inp.focus(); inp.select(); },200);
+}
+function fecharPagar(){
+  document.getElementById('modal-pagar').classList.remove('open');
+  pagarContaId = null;
+}
+function confirmarPagarModal(){
+  const conta = ABERTAS.find(c=>c.id===pagarContaId);
+  if(!conta) return;
+  const saldo = saldoDevido(conta);
+  let valorPago = parseFloat(document.getElementById('pagar-valor').value);
+  if(isNaN(valorPago) || valorPago<=0){ toast('Escreva um valor válido'); return; }
+  if(valorPago > saldo) valorPago = saldo;
+
+  if(!conta.pagamentos) conta.pagamentos = [];
+  conta.pagamentos.push({ ts:Date.now(), valor:valorPago });
+
+  const novoSaldo = saldoDevido(conta);
+  fecharPagar();
+
+  if(novoSaldo <= 0.005){
+    const totalFinal = totalLancamentos(conta.lancamentos);
+    HIST.push({ id:uid(), cliente:conta.cliente, lancamentos:conta.lancamentos, total:totalFinal, pagoEm:Date.now(), observacao:conta.observacao||'' });
+    ABERTAS = ABERTAS.filter(c=>c.id!==conta.id);
     save(LS_ABERTAS, ABERTAS);
     save(LS_HIST, HIST);
-    renderFiado();
     renderHistorico();
-    toast(`Pago: ${fmt(total)} — ${conta.cliente}`);
-  }, 'Confirmar pagamento');
+    toast(`Pago: ${fmt(totalFinal)} — ${conta.cliente}`);
+  } else {
+    save(LS_ABERTAS, ABERTAS);
+    toast(`Pago ${fmt(valorPago)} — faltam ${fmt(novoSaldo)}`);
+  }
+  renderFiado();
 }
 
 // =====================================================================
@@ -1184,7 +1246,7 @@ function verClienteDetalhe(id){
   document.getElementById('detalhe-resumo').innerHTML = `
     <div class="ec-row"><span>Total gasto (histórico)</span><span>${fmt(totalGasto)}</span></div>
     <div class="ec-row"><span>Nº de compras</span><span>${historico.length}</span></div>
-    <div class="ec-row"><span>Conta em aberto agora</span><span>${contaAberta?fmt(totalLancamentos(contaAberta.lancamentos)):'Nenhuma'}</span></div>
+    <div class="ec-row"><span>Conta em aberto agora</span><span>${contaAberta?fmt(saldoDevido(contaAberta)):'Nenhuma'}</span></div>
   `;
 
   const listaHist = document.getElementById('detalhe-historico');
@@ -1229,8 +1291,8 @@ function popularSelectCategorias(catIdSeleccionada){
 }
 function abrirModalItem(){
   itemEditandoId = null;
-  document.getElementById('item-modal-titulo').textContent = 'Novo item';
-  document.getElementById('item-modal-btn').textContent = 'Guardar item';
+  document.getElementById('item-modal-titulo').textContent = 'Novo produto';
+  document.getElementById('item-modal-btn').textContent = 'Guardar produto';
   document.getElementById('item-nome').value='';
   document.getElementById('item-preco').value='';
   popularSelectCategorias(null);
@@ -1240,7 +1302,7 @@ function editarItemMenu(id){
   const item = MENU.find(m=>m.id===id);
   if(!item) return;
   itemEditandoId = id;
-  document.getElementById('item-modal-titulo').textContent = 'Editar item';
+  document.getElementById('item-modal-titulo').textContent = 'Editar produto';
   document.getElementById('item-modal-btn').textContent = 'Guardar alterações';
   document.getElementById('item-nome').value = item.nome;
   document.getElementById('item-preco').value = item.preco;
@@ -1252,7 +1314,7 @@ function guardarItemMenu(){
   const nome = document.getElementById('item-nome').value.trim();
   const preco = parseFloat(document.getElementById('item-preco').value);
   const catId = document.getElementById('item-categoria').value;
-  if(!nome){ toast('Escreva o nome do item'); return; }
+  if(!nome){ toast('Escreva o nome do produto'); return; }
   if(isNaN(preco) || preco<0){ toast('Escreva um preço válido'); return; }
 
   if(itemEditandoId){
@@ -1261,14 +1323,14 @@ function guardarItemMenu(){
     toast('Produto actualizado');
   } else {
     MENU.push({ id:uid(), nome, preco, catId });
-    toast('Item adicionado aos produtos');
+    toast('Produto adicionado');
   }
   save(LS_MENU, MENU);
   fecharModalItem();
   renderCardapio();
 }
 function apagarItemMenu(id){
-  abrirConfirmGenerico('Remover este item dos produtos? Contas já abertas com este item não são alteradas.', ()=>{
+  abrirConfirmGenerico('Remover este produto? Contas já abertas com este produto não são alteradas.', ()=>{
     MENU = MENU.filter(m=>m.id!==id);
     save(LS_MENU, MENU);
     renderCardapio();
