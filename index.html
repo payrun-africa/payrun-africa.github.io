@@ -201,6 +201,7 @@ main{flex:1;padding:0 1.1rem}
 }
 .pr-btn.plus{background:var(--amber);color:#fff}
 .pr-qtd-num{font-family:'SF Mono',Menlo,Consolas,monospace;font-weight:700;min-width:18px;text-align:center;font-size:.85rem}
+.pr-qtd-num.negativo{color:var(--rust)}
 .itens-resumo{font-size:.72rem;color:var(--ink3);text-align:center;padding-top:.3rem}
 .modal-ft{
   padding:.85rem 1.1rem;border-top:1px solid var(--line);display:flex;justify-content:space-between;
@@ -380,7 +381,7 @@ main{flex:1;padding:0 1.1rem}
       <button onclick="fecharModalConta()">✕</button>
     </div>
     <div class="modal-body">
-      <div id="novo-pedido-hint" class="itens-resumo" style="display:none;margin-bottom:.7rem;font-style:italic">🕐 A registar um novo pedido, com a hora de agora — os pedidos anteriores desta conta continuam guardados.</div>
+      <div id="novo-pedido-hint" class="itens-resumo" style="display:none;margin-bottom:.7rem;font-style:italic">🕐 A registar um novo pedido, com a hora de agora — os pedidos anteriores desta conta continuam guardados. Enganou-se numa ordem? Toque em "−" até ficar negativo, para corrigir a conta.</div>
       <div id="pickers-container"></div>
       <div id="conta-itens-vazio" class="itens-resumo">Toque nos itens acima para adicionar à conta.</div>
       <div class="cancel-link" id="cancelar-conta-link" onclick="cancelarConta()" style="display:none">Cancelar esta conta</div>
@@ -1072,6 +1073,7 @@ function cancelarConta(){
 function renderPickers(){
   const container = document.getElementById('pickers-container');
   container.innerHTML = '';
+  const permiteCorrecao = !!contaEditando.id; // só faz sentido corrigir uma conta já existente
   CATEGORIAS.forEach(cat=>{
     const itensCat = MENU.filter(m=>m.catId===cat.id);
     if(itensCat.length===0) return;
@@ -1080,12 +1082,13 @@ function renderPickers(){
     const linhasHtml = itensCat.map(item=>{
       const existente = contaEditando.itens.find(i=>i.itemId===item.id);
       const qtd = existente?existente.qtd:0;
+      const mostrarMinus = permiteCorrecao || qtd>0;
       return `
         <div class="pick-row">
           <div class="pr-info"><div class="pr-nome">${escapeHtml(item.nome)}</div><div class="pr-preco">${fmt(item.preco)}</div></div>
           <div class="pr-qty">
-            <button class="pr-btn minus" style="visibility:${qtd>0?'visible':'hidden'}" onclick="alterarQtd('${item.id}',-1)">−</button>
-            <span class="pr-qtd-num">${qtd}</span>
+            <button class="pr-btn minus" style="visibility:${mostrarMinus?'visible':'hidden'}" onclick="alterarQtd('${item.id}',-1)" title="${permiteCorrecao?'Reduzir / corrigir':'Diminuir'}">−</button>
+            <span class="pr-qtd-num ${qtd<0?'negativo':''}">${qtd}</span>
             <button class="pr-btn plus" onclick="alterarQtd('${item.id}',1)">+</button>
           </div>
         </div>
@@ -1099,14 +1102,18 @@ function renderPickers(){
 function alterarQtd(itemId, delta){
   const item = MENU.find(m=>m.id===itemId);
   if(!item) return;
+  const permiteCorrecao = !!contaEditando.id;
   let linha = contaEditando.itens.find(i=>i.itemId===itemId);
   if(!linha){
-    if(delta<0) return;
+    if(delta<0 && !permiteCorrecao) return;
     linha = {itemId:item.id, nome:item.nome, preco:item.preco, qtd:0};
     contaEditando.itens.push(linha);
   }
   linha.qtd += delta;
-  if(linha.qtd<=0){
+  if(linha.qtd===0){
+    contaEditando.itens = contaEditando.itens.filter(i=>i.itemId!==itemId);
+  } else if(linha.qtd<0 && !permiteCorrecao){
+    linha.qtd = 0;
     contaEditando.itens = contaEditando.itens.filter(i=>i.itemId!==itemId);
   }
   renderPickers();
@@ -1120,7 +1127,7 @@ function guardarConta(){
   const nomeInput = document.getElementById('conta-cliente');
   const cliente = (contaEditando.id ? contaEditando.cliente : nomeInput.value.trim());
   if(!cliente){ toast('Escreva o nome do cliente'); nomeInput.focus(); return; }
-  if(contaEditando.itens.length===0){ toast('Adicione pelo menos um item'); return; }
+  if(contaEditando.itens.length===0){ toast('Adicione ou corrija pelo menos um item'); return; }
 
   const agora = Date.now();
   const novosLancamentos = contaEditando.itens.map(i=>({ ts:agora, itemId:i.itemId, nome:i.nome, preco:i.preco, qtd:i.qtd }));
