@@ -613,6 +613,9 @@ ABERTAS.forEach(c=>{
   if(!c.pagamentos){ c.pagamentos = []; migrou = true; }
   if(c.observacao===undefined){ c.observacao = ''; migrou = true; }
 });
+HIST.forEach(h=>{
+  if(h.fechada===undefined){ h.fechada = true; h.saldoRestante = 0; migrou = true; }
+});
 if(migrou){ save(LS_ABERTAS, ABERTAS); save(LS_HIST, HIST); }
 
 // Conta em edição no modal (rascunho antes de "Guardar")
@@ -860,7 +863,13 @@ function enviarConta(id){
 function enviarContaHistorico(id){
   const h = HIST.find(x=>x.id===id);
   if(!h) return;
-  const texto = montarTextoConta(h.cliente, h.lancamentos) + '\n\n✅ Pago em '+formatarData(h.pagoEm);
+  const fechada = h.fechada!==false;
+  let texto;
+  if(fechada){
+    texto = montarTextoConta(h.cliente, h.lancamentos) + '\n\n✅ Pago em '+formatarData(h.pagoEm);
+  } else {
+    texto = `🧾 ${nomeNegocioAtual()}\nCliente: ${h.cliente}\n\nPagamento recebido: ${fmt(h.total)}\nFalta ainda: ${fmt(h.saldoRestante)}\n\n_Registado em ${formatarData(h.pagoEm)} com Payrun Africa_`;
+  }
   enviarTexto(texto, nomeNegocioAtual()+' — Recibo');
 }
 
@@ -926,19 +935,22 @@ function renderHistorico(){
   atualizarLinhaGerente();
 
   HIST.slice().sort((a,b)=>b.pagoEm-a.pagoEm).forEach(h=>{
+    const fechada = h.fechada!==false; // entradas antigas (sem este campo) eram sempre contas fechadas
     const linhaTempo = h.lancamentos.slice().sort((a,b)=>a.ts-b.ts)
       .map(l=>`<div class="tc-lanc"><span>${horaCurta(l.ts)}</span> — ${l.qtd}× ${escapeHtml(l.nome)}</div>`).join('');
     const div = document.createElement('div');
     div.className='tab-card paga';
     div.innerHTML = `
       <div class="tab-card-hd">
-        <div><div class="tc-nome">${escapeHtml(h.cliente)}</div><div class="tc-quando">pago ${formatarData(h.pagoEm)}</div></div>
+        <div><div class="tc-nome">${escapeHtml(h.cliente)}</div><div class="tc-quando">${fechada?'pago':'pagamento parcial'} ${formatarData(h.pagoEm)}</div></div>
         <div class="tc-hd-right">
           <div class="tc-total">${fmt(h.total)}</div>
           <button class="tc-share" onclick="enviarContaHistorico('${h.id}')" title="Enviar recibo ao cliente">📤</button>
         </div>
       </div>
-      <div class="tc-itens">${linhaTempo}</div>
+      ${fechada
+        ? `<div class="tc-itens">${linhaTempo}</div>`
+        : `<div class="tc-itens" style="color:var(--rust)">🔸 Pagamento parcial — falta ${fmt(h.saldoRestante)} (conta continua aberta)</div>`}
     `;
     lista.appendChild(div);
   });
@@ -1174,21 +1186,30 @@ function confirmarPagarModal(){
   conta.pagamentos.push({ ts:Date.now(), valor:valorPago });
 
   const novoSaldo = saldoDevido(conta);
+  const fechada = novoSaldo <= 0.005;
   fecharPagar();
 
-  if(novoSaldo <= 0.005){
-    const totalFinal = totalLancamentos(conta.lancamentos);
-    HIST.push({ id:uid(), cliente:conta.cliente, lancamentos:conta.lancamentos, total:totalFinal, pagoEm:Date.now(), observacao:conta.observacao||'' });
+  // Regista sempre este pagamento no Histórico — parcial ou a fechar a conta.
+  // Os itens (lancamentos) só vão para o Histórico quando a conta fecha de vez,
+  // para não contarmos o mesmo consumo duas vezes nos relatórios.
+  HIST.push({
+    id:uid(), cliente:conta.cliente,
+    lancamentos: fechada ? conta.lancamentos : [],
+    total: valorPago, pagoEm: Date.now(), observacao: conta.observacao||'',
+    fechada: fechada, saldoRestante: fechada ? 0 : novoSaldo
+  });
+  save(LS_HIST, HIST);
+
+  if(fechada){
     ABERTAS = ABERTAS.filter(c=>c.id!==conta.id);
     save(LS_ABERTAS, ABERTAS);
-    save(LS_HIST, HIST);
-    renderHistorico();
-    toast(`Pago: ${fmt(totalFinal)} — ${conta.cliente}`);
+    toast(`Pago: ${fmt(valorPago)} — ${conta.cliente} (conta fechada)`);
   } else {
     save(LS_ABERTAS, ABERTAS);
     toast(`Pago ${fmt(valorPago)} — faltam ${fmt(novoSaldo)}`);
   }
   renderFiado();
+  renderHistorico();
 }
 
 // =====================================================================
