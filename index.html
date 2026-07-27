@@ -88,6 +88,12 @@ main{flex:1;padding:0 1.1rem}
 .tc-share{background:var(--paper2);border:1px solid var(--line);border-radius:6px;width:28px;height:28px;
   font-size:.85rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:0}
 .tc-share:active{background:var(--amberp)}
+.tc-cancel-x{
+  width:18px;height:18px;border-radius:5px;background:var(--paper2);color:var(--ink3);border:none;
+  font-size:.62rem;font-weight:700;cursor:pointer;flex-shrink:0;margin-top:.12rem;
+  display:flex;align-items:center;justify-content:center;padding:0;
+}
+.tc-cancel-x:active{background:var(--rustp);color:var(--rust)}
 .tc-obs-btn{
   width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;
   border-bottom:10px solid var(--line);background:none;cursor:pointer;padding:0;flex-shrink:0;
@@ -748,7 +754,10 @@ function renderFiado(){
     const temObs = conta.observacao && conta.observacao.trim();
     div.innerHTML = `
       <div class="tab-card-hd">
-        <div><div class="tc-nome">${escapeHtml(conta.cliente)}</div><div class="tc-quando">desde ${formatarData(conta.criadoEm)}</div></div>
+        <div style="display:flex;align-items:flex-start;gap:.45rem">
+          <button class="tc-cancel-x" onclick="cancelarContaAberta('${conta.id}')" title="Cancelar conta">✕</button>
+          <div><div class="tc-nome">${escapeHtml(conta.cliente)}</div><div class="tc-quando">desde ${formatarData(conta.criadoEm)}</div></div>
+        </div>
         <div class="tc-hd-right">
           <div class="tc-total">${fmt(total)}</div>
           <button class="tc-share" onclick="enviarConta('${conta.id}')" title="Enviar conta ao cliente">📤</button>
@@ -1082,6 +1091,16 @@ function cancelarConta(){
     toast('Conta cancelada');
   }, 'Cancelar conta');
 }
+function cancelarContaAberta(id){
+  const conta = ABERTAS.find(c=>c.id===id);
+  if(!conta) return;
+  abrirConfirmGenerico(`Cancelar a conta de ${conta.cliente}? Não fica registada em nenhum histórico nem no relatório ao dono/gerente.`, ()=>{
+    ABERTAS = ABERTAS.filter(c=>c.id!==id);
+    save(LS_ABERTAS, ABERTAS);
+    renderFiado();
+    toast('Conta cancelada');
+  }, 'Cancelar conta');
+}
 
 function qtdJaNaConta(itemId){
   if(!contaEditando.id) return 0;
@@ -1183,6 +1202,10 @@ function pagarConta(id){
   const conta = ABERTAS.find(c=>c.id===id);
   if(!conta) return;
   const saldo = saldoDevido(conta);
+  if(saldo<=0.005){
+    toast('Esta conta já não tem valor em dívida — usa o ✕ para a cancelar/fechar');
+    return;
+  }
   pagarContaId = id;
   document.getElementById('pagar-mensagem').textContent = `Confirmar pagamento de ${fmt(saldo)} por ${conta.cliente}?`;
   document.getElementById('pagar-valor').value = saldo.toFixed(2);
