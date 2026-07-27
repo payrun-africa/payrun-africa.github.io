@@ -1082,6 +1082,12 @@ function cancelarConta(){
   }, 'Cancelar conta');
 }
 
+function qtdJaNaConta(itemId){
+  if(!contaEditando.id) return 0;
+  const conta = ABERTAS.find(c=>c.id===contaEditando.id);
+  if(!conta) return 0;
+  return conta.lancamentos.filter(l=>l.itemId===itemId).reduce((s,l)=>s+l.qtd,0);
+}
 function renderPickers(){
   const container = document.getElementById('pickers-container');
   container.innerHTML = '';
@@ -1094,7 +1100,8 @@ function renderPickers(){
     const linhasHtml = itensCat.map(item=>{
       const existente = contaEditando.itens.find(i=>i.itemId===item.id);
       const qtd = existente?existente.qtd:0;
-      const mostrarMinus = permiteCorrecao || qtd>0;
+      const jaNaConta = permiteCorrecao ? qtdJaNaConta(item.id) : 0;
+      const mostrarMinus = qtd>0 || (permiteCorrecao && jaNaConta>0);
       return `
         <div class="pick-row">
           <div class="pr-info"><div class="pr-nome">${escapeHtml(item.nome)}</div><div class="pr-preco">${fmt(item.preco)}</div></div>
@@ -1116,16 +1123,27 @@ function alterarQtd(itemId, delta){
   if(!item) return;
   const permiteCorrecao = !!contaEditando.id;
   let linha = contaEditando.itens.find(i=>i.itemId===itemId);
+  const draftActual = linha ? linha.qtd : 0;
+
+  if(delta<0){
+    if(!permiteCorrecao){
+      if(draftActual<=0) return; // conta nova — nada a corrigir
+    } else {
+      const jaNaConta = qtdJaNaConta(itemId);
+      const resultante = jaNaConta + draftActual + delta;
+      if(resultante < 0){
+        toast(jaNaConta<=0 ? 'Este produto não está registado nesta conta' : `Só pode reduzir até ${jaNaConta} unidade(s) já registada(s)`);
+        return;
+      }
+    }
+  }
+
   if(!linha){
-    if(delta<0 && !permiteCorrecao) return;
     linha = {itemId:item.id, nome:item.nome, preco:item.preco, qtd:0};
     contaEditando.itens.push(linha);
   }
   linha.qtd += delta;
   if(linha.qtd===0){
-    contaEditando.itens = contaEditando.itens.filter(i=>i.itemId!==itemId);
-  } else if(linha.qtd<0 && !permiteCorrecao){
-    linha.qtd = 0;
     contaEditando.itens = contaEditando.itens.filter(i=>i.itemId!==itemId);
   }
   renderPickers();
