@@ -843,11 +843,30 @@ function nomeNegocioAtual(){
   const t = document.getElementById('brand-name').textContent;
   return t==='Clique aqui para adicionar o nome da sua Loja, restaurante ou Barraca' ? 'Barraca' : t;
 }
-function montarTextoConta(cliente, lancamentos, totalOverride){
-  const linhas = lancamentos.slice().sort((a,b)=>a.ts-b.ts)
-    .map(l=>`${horaCurta(l.ts)} — ${l.qtd}× ${l.nome}`);
+function fmtNum(n){ return (Number(n)||0).toLocaleString('pt-PT',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function montarTextoConta(cliente, lancamentos, totalOverride, jaPago){
+  const agrupado = agruparLancamentos(lancamentos);
   const total = totalOverride!==undefined ? totalOverride : totalLancamentos(lancamentos);
-  return `🧾 ${nomeNegocioAtual()}\nCliente: ${cliente}\n\n${linhas.join('\n')}\n\nTotal: ${fmt(total)}\n\n_Conta gerada via Payrun_`;
+
+  const linhasTabela = agrupado.map(i=>{
+    const qtdStr = String(i.qtd).padEnd(4);
+    let nomeStr = i.nome.length>18 ? i.nome.slice(0,17)+'…' : i.nome;
+    nomeStr = nomeStr.padEnd(18);
+    const precoStr = fmtNum(i.preco).padStart(7);
+    const totalStr = fmtNum(i.preco*i.qtd).padStart(8);
+    return `${qtdStr} ${nomeStr} ${precoStr} ${totalStr}`;
+  }).join('\n');
+  const cabecalhoTabela = 'Qtd  Produto            Preço    Total';
+
+  const linhasTempo = lancamentos.slice().sort((a,b)=>a.ts-b.ts)
+    .map(l=>`${horaCurta(l.ts)} — ${l.qtd}× ${l.nome}`).join('\n');
+
+  let texto = `🧾 Payrun Africa — ${nomeNegocioAtual()}\nCliente: ${cliente}\n\n`+
+    '```\n'+cabecalhoTabela+'\n'+linhasTabela+'\n```\n\n'+
+    `TOTAL GERAL: ${fmt(total)}\n`;
+  if(jaPago>0) texto += `Já pago: ${fmt(jaPago)}\n`;
+  texto += `\nHorário dos pedidos:\n${linhasTempo}\n\n_Conta gerada via Payrun_`;
+  return texto;
 }
 function limparTelefoneParaWa(tel){
   let digitos = tel.replace(/\D/g,'');
@@ -864,9 +883,7 @@ function enviarTexto(texto, tituloPartilha){
 function enviarConta(id){
   const conta = ABERTAS.find(c=>c.id===id);
   if(!conta) return;
-  let texto = montarTextoConta(conta.cliente, conta.lancamentos, saldoDevido(conta));
-  const pago = totalPago(conta);
-  if(pago>0) texto = texto.replace('\n\nTotal:', `\n\nJá pago: ${fmt(pago)}\nSaldo em falta:`);
+  const texto = montarTextoConta(conta.cliente, conta.lancamentos, saldoDevido(conta), totalPago(conta));
   enviarTexto(texto, nomeNegocioAtual()+' — Conta');
 }
 function enviarContaHistorico(id){
@@ -877,7 +894,7 @@ function enviarContaHistorico(id){
   if(fechada){
     texto = montarTextoConta(h.cliente, h.lancamentos) + '\n\n✅ Pago em '+formatarData(h.pagoEm);
   } else {
-    texto = `🧾 ${nomeNegocioAtual()}\nCliente: ${h.cliente}\n\nPagamento recebido: ${fmt(h.total)}\nFalta ainda: ${fmt(h.saldoRestante)}\n\n_Registado em ${formatarData(h.pagoEm)} com Payrun Africa_`;
+    texto = `🧾 Payrun Africa — ${nomeNegocioAtual()}\nCliente: ${h.cliente}\n\nPagamento recebido: ${fmt(h.total)}\nFalta ainda: ${fmt(h.saldoRestante)}\n\n_Registado em ${formatarData(h.pagoEm)} via Payrun_`;
   }
   enviarTexto(texto, nomeNegocioAtual()+' — Recibo');
 }
