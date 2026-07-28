@@ -848,21 +848,15 @@ function montarTextoConta(cliente, lancamentos, totalOverride, jaPago){
   const agrupado = agruparLancamentos(lancamentos);
   const total = totalOverride!==undefined ? totalOverride : totalLancamentos(lancamentos);
 
-  const linhasTabela = agrupado.map(i=>{
-    const qtdStr = String(i.qtd).padEnd(4);
-    let nomeStr = i.nome.length>18 ? i.nome.slice(0,17)+'…' : i.nome;
-    nomeStr = nomeStr.padEnd(18);
-    const precoStr = fmtNum(i.preco).padStart(7);
-    const totalStr = fmtNum(i.preco*i.qtd).padStart(8);
-    return `${qtdStr} ${nomeStr} ${precoStr} ${totalStr}`;
-  }).join('\n');
-  const cabecalhoTabela = 'Qtd  Produto            Preço    Total';
+  const linhasProdutos = agrupado.map(i=>
+    `${i.qtd}× ${i.nome} (${fmtNum(i.preco)} cada) = ${fmtNum(i.preco*i.qtd)}`
+  ).join('\n');
 
   const linhasTempo = lancamentos.slice().sort((a,b)=>a.ts-b.ts)
     .map(l=>`${horaCurta(l.ts)} — ${l.qtd}× ${l.nome}`).join('\n');
 
   let texto = `🧾 Payrun Africa — ${nomeNegocioAtual()}\nCliente: ${cliente}\n\n`+
-    '```\n'+cabecalhoTabela+'\n'+linhasTabela+'\n```\n\n'+
+    `${linhasProdutos}\n\n`+
     `TOTAL GERAL: ${fmt(total)}\n`;
   if(jaPago>0) texto += `Já pago: ${fmt(jaPago)}\n`;
   texto += `\nHorário dos pedidos:\n${linhasTempo}\n\n_Conta gerada via Payrun_`;
