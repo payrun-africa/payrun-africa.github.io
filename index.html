@@ -7,19 +7,19 @@
 <meta name="apple-mobile-web-app-title" content="Payrun Africa">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#D9541E">
+<meta name="theme-color" content="#BE4A28">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <style>
 :root{
-  --paper:#FBF3E4;--paper2:#F3E7D6;--card:#FFFFFF;
-  --ink:#241C15;--ink2:#5C5148;--ink3:#8A7860;
-  --line:#EAD9BC;
-  --amber:#F0A030;--amberd:#C07820;--amberp:rgba(240,160,48,.12);
-  --rust:#D9541E;--rustd:#B94E1A;--rustp:rgba(217,84,30,.10);
-  --green:#1F8F5C;--greend:#166B45;--greenp:rgba(31,143,92,.10);
-  --shadow:0 4px 14px rgba(36,28,21,.10);
+  --paper:#FAF5E9;--paper2:#F1E8D6;--card:#FFFFFF;
+  --ink:#2B2320;--ink2:#5C5148;--ink3:#8A7F72;
+  --line:#E3D6BE;
+  --amber:#D98E2B;--amberd:#B9701A;--amberp:rgba(217,142,43,.12);
+  --rust:#BE4A28;--rustd:#9C3A1F;--rustp:rgba(190,74,40,.10);
+  --green:#4C7A5E;--greend:#396047;--greenp:rgba(76,122,94,.10);
+  --shadow:0 3px 10px rgba(43,35,32,.08);
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%}
@@ -296,7 +296,7 @@ main{flex:1;padding:0 1.1rem}
 <div id="app">
 
   <div class="install-banner" id="install-banner">
-    <span id="install-banner-text"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 19h16"/></svg> Instala esta app no telemóvel para acesso rápido</span>
+    <span id="install-banner-text">📲 Instala esta app no telemóvel para acesso rápido</span>
     <button class="ib-instalar" id="install-banner-btn" onclick="instalarApp()">Instalar</button>
     <button class="ib-fechar" onclick="fecharInstallBanner()">✕</button>
   </div>
@@ -372,9 +372,9 @@ main{flex:1;padding:0 1.1rem}
   <button class="fab" id="fab-novo" onclick="abrirNovaConta()">+</button>
 
   <nav class="bottom-nav">
-    <button class="nav-btn active" data-view="fiado" onclick="mudarView('fiado')"><span class="nav-ico"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2h16v20l-3-2-3 2-3-2-3 2-3-2-1 2z"/><line x1="8" y1="7" x2="16" y2="7"/><line x1="8" y1="11" x2="16" y2="11"/></svg></span><span>Conta</span></button>
-    <button class="nav-btn" data-view="historico" onclick="mudarView('historico')"><span class="nav-ico"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2"/><path d="M9 2h6"/></svg></span><span>Histórico</span></button>
-    <button class="nav-btn" data-view="cardapio" onclick="mudarView('cardapio')"><span class="nav-ico"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg></span><span>Produtos</span></button>
+    <button class="nav-btn active" data-view="fiado" onclick="mudarView('fiado')"><span class="nav-ico">📒</span><span>Conta</span></button>
+    <button class="nav-btn" data-view="historico" onclick="mudarView('historico')"><span class="nav-ico">✅</span><span>Histórico</span></button>
+    <button class="nav-btn" data-view="cardapio" onclick="mudarView('cardapio')"><span class="nav-ico">📋</span><span>Produtos</span></button>
   </nav>
 </div>
 
@@ -383,7 +383,7 @@ main{flex:1;padding:0 1.1rem}
   <div class="modal-sheet">
     <div class="modal-hd">
       <input id="conta-cliente" type="text" placeholder="Nome do cliente">
-      <button class="tc-share" id="btn-abrir-clientes" onclick="abrirClientes()" title="Clientes registados"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg></button>
+      <button class="tc-share" id="btn-abrir-clientes" onclick="abrirClientes()" title="Clientes registados">👤</button>
       <button onclick="fecharModalConta()">✕</button>
     </div>
     <div class="modal-body">
@@ -448,7 +448,7 @@ main{flex:1;padding:0 1.1rem}
 <!-- Modal: observação da conta -->
 <div class="modal-overlay" id="modal-observacao">
   <div class="modal-sheet small">
-    <div class="modal-hd"><span style="font-family:Georgia,'Noto Serif',serif;font-weight:700;font-size:1.15rem"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg> Observação</span><button onclick="fecharObservacao()">✕</button></div>
+    <div class="modal-hd"><span style="font-family:Georgia,'Noto Serif',serif;font-weight:700;font-size:1.15rem">📝 Observação</span><button onclick="fecharObservacao()">✕</button></div>
     <div class="modal-body">
       <label>Nota sobre esta conta (ex: "pediu para pagar só sexta", "cliente de confiança", etc.)</label>
       <textarea id="observacao-texto" rows="5" style="width:100%;border:1.5px solid var(--line);border-radius:8px;padding:.6rem .7rem;font-size:.88rem;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:var(--ink);resize:vertical"></textarea>
@@ -463,7 +463,7 @@ main{flex:1;padding:0 1.1rem}
 <div class="modal-overlay" id="modal-clientes">
   <div class="modal-sheet">
     <div class="modal-hd">
-      <span style="font-family:'Kalam',cursive,Georgia,serif;font-weight:700;font-size:1.15rem"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg> Clientes</span>
+      <span style="font-family:'Kalam',cursive,Georgia,serif;font-weight:700;font-size:1.15rem">👤 Clientes</span>
       <button onclick="fecharClientes()">✕</button>
     </div>
     <div class="modal-body">
@@ -522,7 +522,7 @@ main{flex:1;padding:0 1.1rem}
     <div class="lock-card">
       <h4>O teu código de aparelho</h4>
       <div class="device-id" id="lock-device-id">------</div>
-      <button class="lock-copy" onclick="copiarDeviceId()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copiar código</button>
+      <button class="lock-copy" onclick="copiarDeviceId()">📋 Copiar código</button>
     </div>
 
     <div class="lock-card">
@@ -530,7 +530,7 @@ main{flex:1;padding:0 1.1rem}
       <div class="pay-row"><span>M-Pesa</span><b id="lock-mpesa">—</b></div>
       <div class="pay-row"><span>e-Mola</span><b id="lock-emola">—</b></div>
       <div class="pay-row"><span>Valor</span><b id="lock-preco">—</b></div>
-      <a href="#" id="lock-wa" class="wa-btn" target="_blank"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M21 11.5a8.38 8.38 0 0 1-8.5 8.4A8.5 8.5 0 0 1 4 12a8.38 8.38 0 0 1 8.4-8.5 8.5 8.5 0 0 1 8.5 8.5z"/><path d="M8 12h.01M12 12h.01M16 12h.01"/></svg> Enviar comprovativo por WhatsApp</a>
+      <a href="#" id="lock-wa" class="wa-btn" target="_blank">💬 Enviar comprovativo por WhatsApp</a>
     </div>
 
     <div class="lock-card">
@@ -760,7 +760,7 @@ function renderFiado(){
         </div>
         <div class="tc-hd-right">
           <div class="tc-total">${fmt(total)}</div>
-          <button class="tc-share" onclick="enviarConta('${conta.id}')" title="Enviar conta ao cliente"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
+          <button class="tc-share" onclick="enviarConta('${conta.id}')" title="Enviar conta ao cliente">📤</button>
           <button class="tc-obs-btn ${temObs?'tem-obs':''}" onclick="abrirObservacao('${conta.id}')" title="${temObs?'Ver observação':'Adicionar observação'}"></button>
         </div>
       </div>
@@ -965,7 +965,7 @@ function renderHistorico(){
         <div><div class="tc-nome">${escapeHtml(h.cliente)}</div><div class="tc-quando">${fechada?'pago':'pagamento parcial'} ${formatarData(h.pagoEm)}</div></div>
         <div class="tc-hd-right">
           <div class="tc-total">${fmt(h.total)}</div>
-          <button class="tc-share" onclick="enviarContaHistorico('${h.id}')" title="Enviar recibo ao cliente"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
+          <button class="tc-share" onclick="enviarContaHistorico('${h.id}')" title="Enviar recibo ao cliente">📤</button>
         </div>
       </div>
       ${fechada
@@ -984,7 +984,7 @@ const LS_GERENTE_WA = 'fiado_gerente_whatsapp';
 function atualizarLinhaGerente(){
   const tel = load(LS_GERENTE_WA, '');
   const el = document.getElementById('gerente-linha');
-  el.innerHTML = tel ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/></svg> Relatórios vão para: '+escapeHtml(tel)+'  (toca para mudar)' : '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/></svg> Toca aqui para definir o número do dono/gerente';
+  el.textContent = tel ? '📞 Relatórios vão para: '+tel+'  (toca para mudar)' : '📞 Toca aqui para definir o número do dono/gerente';
 }
 function editarGerenteWa(){
   const actual = load(LS_GERENTE_WA, '');
@@ -1554,10 +1554,10 @@ function mostrarInstallBanner(tipo){
   const texto = document.getElementById('install-banner-text');
   const btn = document.getElementById('install-banner-btn');
   if(tipo==='ios'){
-    texto.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 19h16"/></svg> Para instalar: toca em <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M12 3v12"/><path d="M8 7l4-4 4 4"/><rect x="4" y="13" width="16" height="8" rx="2"/></svg> (partilhar) e depois em "Adicionar ao Ecrã Principal"';
+    texto.textContent = '📲 Para instalar: toca em ⬆️ (partilhar) e depois em "Adicionar ao Ecrã Principal"';
     btn.style.display='none';
   } else {
-    texto.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 19h16"/></svg> Instala esta app no telemóvel para acesso rápido';
+    texto.textContent = '📲 Instala esta app no telemóvel para acesso rápido';
     btn.style.display='inline-block';
   }
   banner.style.display='flex';
